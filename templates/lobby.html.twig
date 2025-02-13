@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <div>Hello {{ user.display_name }}</div>
+
+    <turbo-frame id="main-content">
+       <div id="user-list">
+        <h2>Users List with "!play"</h2>
+        <ul id="user-list-items"></ul>
+    </div>
+    </turbo-frame>
+    <script>
+        $(document).ready(function() {
+            const channel = '{{ user.login }}';
+            const accessToken = '{{ access_token }}';
+            const clientId = '{{ client_id }}';
+
+            const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
+
+            socket.onopen = function() {
+                socket.send('PASS oauth:' + accessToken);
+                socket.send('NICK justinfan' + Math.floor(Math.random() * 10000));
+                socket.send('JOIN #' + channel);
+            };
+
+            socket.onmessage = function(event) {
+                const message = event.data;
+                if (message.includes('PRIVMSG')) {
+                    const parts = message.split(' ');
+                    const user = parts[0].split('!')[0].substring(1);
+                    const text = parts.slice(3).join(' ').substring(1);
+
+                    if (text.trim() === '!play') {
+                        $.ajax({
+                            url: 'https://api.twitch.tv/helix/users',
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken,
+                                'Client-Id': clientId
+                            },
+                            data: {
+                                login: user
+                            },
+                            success: function(response) {
+                                const displayName = response.data[0].display_name;
+                                const $userListItems = $('#user-list-items');
+                                const $existingItem = $userListItems.find('li:contains(' + displayName + ')');
+
+                                if ($existingItem.length === 0) {
+                                    $userListItems.append('<li>' + displayName + '</li>');
+                                }
+                            }
+                        });
+                    }
+                }
+            };
+        });
+    </script>
+{% endblock %}
