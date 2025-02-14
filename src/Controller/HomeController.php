@@ -71,7 +71,7 @@ final class HomeController extends AbstractController
             return $this->redirectToRoute('home');
 
         } else {
-            $twitch_access_token = $_SESSION['access_token'];
+            $twitch_access_token = $session->get('access_token');
             $user = $this->getTwitchUser($twitch_access_token, $twitchApi);
 
             return $this->render('home.html.twig', [

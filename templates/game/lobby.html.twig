@@ -1,20 +1,69 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Hello GameController!{% endblock %}
-
 {% block body %}
-<style>
-    .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
-    .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
-</style>
+    <turbo-frame id="main-content">
+        <div class="bg-white shadow-md rounded-md overflow-hidden w-7xl mx-auto mt-16" id="user-list">
+            <div class="bg-gray-100 py-2 px-4 text-center">
+                <h3 class="text-3xl mb-2">Type "<span class="font-bold">!play</span>" to join the game !</h3>
+                <h2 class="text-4xl font-semibold text-gray-800">Racers</h2>
+            </div>
+            <ul class="divide-y divide-gray-200" id="user-list-items"></ul>
+            <div class="text-right mt-8 p-8">
+                <button disabled id="create-game" class="btn-cartoon border-gray-100">Create Game</button>
+            </div>
+        </div>
+    </turbo-frame>
+    <script>
+        $(document).ready(function() {
+            const channel = '{{ user.login }}';
+            const accessToken = '{{ access_token }}';
+            const clientId = '{{ client_id }}';
 
-<div class="example-wrapper">
-    <h1>Hello {{ controller_name }}! ✅</h1>
+            const socket = new WebSocket('wss://irc-ws.chat.twitch.tv:443');
 
-    This friendly message is coming from:
-    <ul>
-        <li>Your controller at <code>C:/xampp/htdocs/horseracing/src/Controller/GameController.php</code></li>
-        <li>Your template at <code>C:/xampp/htdocs/horseracing/templates/game/index.html.twig</code></li>
-    </ul>
-</div>
+            socket.onopen = function() {
+                socket.send('PASS oauth:' + accessToken);
+                socket.send('NICK justinfan' + Math.floor(Math.random() * 10000));
+                socket.send('JOIN #' + channel);
+            };
+
+            socket.onmessage = function(event) {
+                const message = event.data;
+                if (message.includes('PRIVMSG')) {
+                    const parts = message.split(' ');
+                    const user = parts[0].split('!')[0].substring(1);
+                    const text = parts.slice(3).join(' ').substring(1);
+
+                    if (text.trim() === '!play') {
+                        $.ajax({
+                            url: 'https://api.twitch.tv/helix/users',
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken,
+                                'Client-Id': clientId
+                            },
+                            data: {
+                                login: user
+                            },
+                            success: function(response) {
+                                const displayName = response.data[0].display_name;
+                                const profileImage = response.data[0].profile_image_url;
+                                const $userListItems = $('#user-list-items');
+                                const $existingItem = $userListItems.find('li:contains(' + displayName + ')');
+
+                                if ($existingItem.length === 0) {
+                                    $userListItems.append(
+                                        '<li class="player flex justify-center items-center py-4 px-6">'+
+                                        '<div><img class="w-20 h-20 rounded-full object-cover mr-4" src="'+profileImage+'" alt="User avatar"></div>'+
+                                          '<div>'+
+                                                '<h4 class="text-xl font-medium text-gray-800">'+displayName+'</h4>'+
+                                            '</div>'+
+                                        '</li>');
+                                }
+                            }
+                        });
+                    }
+                }
+            };
+        });
+    </script>
 {% endblock %}
