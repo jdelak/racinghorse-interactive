@@ -9,12 +9,19 @@
             </div>
             <ul class="divide-y divide-gray-200" id="user-list-items"></ul>
             <div class="text-right mt-8 p-8">
-                <button disabled id="create-game" class="btn-cartoon border-gray-100">Create Game</button>
+                <form id="fillingrace"  action="{{ path('race') }}" method="POST">
+                    <input id="racers" type="hidden" name="racers" />
+                </form>
+                <button id="create-game" class="btn-cartoon border-gray-100">Create Game</button>
             </div>
         </div>
     </turbo-frame>
     <script>
         $(document).ready(function() {
+            let userList = [];
+            let btn = document.getElementById("create-game");
+            let form = document.getElementById("fillingrace");
+            let racers = document.getElementById("racers");
             const channel = '{{ user.login }}';
             const accessToken = '{{ access_token }}';
             const clientId = '{{ client_id }}';
@@ -58,12 +65,22 @@
                                                 '<h4 class="text-xl font-medium text-gray-800">'+displayName+'</h4>'+
                                             '</div>'+
                                         '</li>');
+
+                                    userList.push(displayName);
+                                    racers.value = JSON.stringify(userList);
                                 }
                             }
                         });
                     }
                 }
             };
+
+            // Adding event listener to button
+            btn.addEventListener("click", () => {
+               form.submit();
+            });
+
+
         });
     </script>
 {% endblock %}

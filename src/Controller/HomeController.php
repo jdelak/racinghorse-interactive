@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Services\TwitchService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,6 +12,13 @@ use TwitchApi\TwitchApi;
 
 final class HomeController extends AbstractController
 {
+
+    private $twitchService;
+
+    public function __construct(TwitchService $twitchService)
+    {
+        $this->twitchService = $twitchService;
+    }
 
     #[Route('/', name: 'home')]
     public function home(Request $request): Response
@@ -72,23 +80,13 @@ final class HomeController extends AbstractController
 
         } else {
             $twitch_access_token = $session->get('access_token');
-            $user = $this->getTwitchUser($twitch_access_token, $twitchApi);
+            $user = $this->twitchService->getTwitchUser($twitch_access_token, $twitchApi);
 
             return $this->render('home.html.twig', [
                 'user' => $user,
                 'access_token' => $twitch_access_token
             ]);
         }
-    }
-
-    public function getTwitchUser($twitch_access_token, TwitchApi $twitchApi){
-
-        $response = $twitchApi->getUsersApi()->getUserByAccessToken($twitch_access_token);
-        // Get and decode the actual content sent by Twitch.
-        $responseContent = json_decode($response->getBody()->getContents());
-        // Return the first (or only) user.
-        return $responseContent->data[0];
-        
     }
 
 }

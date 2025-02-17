@@ -7,9 +7,18 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Request;
 use TwitchApi\TwitchApi;
+use App\Services\TwitchService;
 
 final class GameController extends AbstractController
 {
+
+    private $twitchService;
+
+    public function __construct(TwitchService $twitchService)
+    {
+        $this->twitchService = $twitchService;
+    }
+
     #[Route('/lobby', name: 'lobby')]
     public function createLobby(Request $request): Response
     {
@@ -20,7 +29,7 @@ final class GameController extends AbstractController
         $helixGuzzleClient = new \TwitchApi\HelixGuzzleClient($twitch_client_id);
         $twitchApi = new \TwitchApi\TwitchApi($helixGuzzleClient, $twitch_client_id, $twitch_client_secret);
         $twitch_access_token = $session->get('access_token');
-        $user = $this->getTwitchUser($twitch_access_token, $twitchApi);
+        $user = $this->twitchService->getTwitchUser($twitch_access_token, $twitchApi);
 
         return $this->render('game/lobby.html.twig', [
             'client_id' => $twitch_client_id,
@@ -53,13 +62,5 @@ final class GameController extends AbstractController
         ]);
     }
 
-    public function getTwitchUser($twitch_access_token, TwitchApi $twitchApi){
-
-        $response = $twitchApi->getUsersApi()->getUserByAccessToken($twitch_access_token);
-        // Get and decode the actual content sent by Twitch.
-        $responseContent = json_decode($response->getBody()->getContents());
-        // Return the first (or only) user.
-        return $responseContent->data[0];
-        
-    }
+    
 }

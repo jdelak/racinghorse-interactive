@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+    <turbo-frame id="main-content">
+        <div>
+            {% for horse in horses  %}
+                <div class="horse" data-min="{{horse.getMinSpeed()}}" data-max="{{horse.getMaxSpeed()}}" data-acc="{{horse.getAcceleration()}}" data-endu="{{horse.getEndurance()}}">
+                    <span>{{horse.getName()}}</span>
+                </div>
+            {% endfor %}
+        </div>
+    </turbo-frame>
+
+    <script>
+        $(document).ready(function() {
+          
+        });
+    </script>
+
+{% endblock body%}
