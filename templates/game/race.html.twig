@@ -1,19 +1,228 @@
 {% extends 'base.html.twig' %}
 
 {% block body %}
-    <turbo-frame id="main-content">
-        <div>
-            {% for horse in horses  %}
-                <div class="horse" data-min="{{horse.getMinSpeed()}}" data-max="{{horse.getMaxSpeed()}}" data-acc="{{horse.getAcceleration()}}" data-endu="{{horse.getEndurance()}}">
-                    <span>{{horse.getName()}}</span>
-                </div>
-            {% endfor %}
-        </div>
-    </turbo-frame>
+    <turbo-frame id="main">
 
+        <div id="track-container" class="race-track-container w-full">
+            <div id="track" class="race-track">
+                {% for horse in horses %}
+                <div class="horse" data-user="{{ horse.getName() }}"  data-min="{{horse.getMinSpeed()}}" data-max="{{horse.getMaxSpeed()}}" data-acc="{{horse.getAcceleration()}}" data-endu="{{horse.getEndurance()}}">
+                    <span>{{horse.getName()}}</span>
+                    <img src="assets/images/horses/{{ horse.getHorseSkin() }}.png"  />
+                </div>
+                 <div>
+                    min_speed : {{horse.getMinSpeed()}}<br>
+                    max_speed : {{horse.getMaxSpeed()}}<br>
+                    acceleration : {{horse.getAcceleration()}}<br>
+                    endurance : {{horse.getEndurance()}}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+       
+        <div id="results" class="results-modal"></div>
+        <div id="countdown" class="countdown"></div>  
+     
+    </turbo-frame>
     <script>
         $(document).ready(function() {
-          
+            // Encapsuler tout le code dans une fonction principale
+            function initRace() {
+                // Init variables
+                const lobbyurl = "{{ path('lobby') }}";
+                let raceStarted = false;
+                let countdown = 5;
+                let raceAnimationFrame = null;
+                let startTime = null;
+                let raceFinished = false;
+                let leadingHorse = null;
+                let racers = document.getElementsByClassName("horse");
+                const raceLength = 10000;
+                const trackContainer = document.getElementById('track-container');
+                trackContainer.style.width = raceLength;
+                let horses = [];
+                const countdownElement = document.getElementById('countdown');
+                let lastUpdateTime = 0;
+                let lastTrackPosition = 0;
+
+                function horseStyle(horse) {
+                    let racer = document.querySelector('[data-user="' + horse.name + '"]');
+                    racer.style.left = horse.distance + 'px';
+                }
+
+                function fetchHorses() {
+                    addHorses(racers).then(data => {
+                        if (data.success) {
+                            horses = data.horses;
+                            leadingHorse = horses[0];
+                            startCountdown();
+                        } else {
+                            console.log("adding horses error !");
+                        }
+                    });
+                }
+
+                function startCountdown() {
+                    const countdownInterval = setInterval(() => {
+                        countdownElement.textContent = countdown;
+                        countdownElement.style.fontSize = '200px';
+                        countdownElement.style.opacity = 1;
+                        setTimeout(() => {
+                            countdownElement.style.fontSize = '0px';
+                            countdownElement.style.opacity = 0;
+                        }, 500);
+                        countdown--;
+                        if (countdown < 0) {
+                            clearInterval(countdownInterval);
+                            countdownElement.style.display = 'none';
+                            raceStarted = true;
+                            startTime = performance.now();
+                            runRace();
+                        }
+                    }, 1000);
+                }
+
+                function runRace() {
+                    if (raceStarted) {
+                        const animate = (timestamp) => {
+                            if (!lastUpdateTime) lastUpdateTime = timestamp;
+                            const elapsed = timestamp - lastUpdateTime;
+                            if (elapsed >= 100) { // Mettre à jour toutes les 0,1 secondes
+                                let allFinished = true;
+                                horses.forEach(horse => {
+                                    if (!horse.finished) {
+                                        horse.move(raceLength);
+                                        horseStyle(horse);
+                                        allFinished = false;
+                                    }
+                                });
+                                updateLeadingHorse();
+                                document.getElementById('track').style.transform = trackStyle();
+                                if (!allFinished) {
+                                    lastUpdateTime = timestamp;
+                                    requestAnimationFrame(animate);
+                                } else {
+                                    showResults();
+                                }
+                            } else {
+                                requestAnimationFrame(animate);
+                            }
+                        };
+                        requestAnimationFrame(animate);
+                    }
+                }
+
+                function updateLeadingHorse() {
+                    leadingHorse = horses.reduce((maxHorse, horse) => (horse.distance > maxHorse.distance ? horse : maxHorse), horses[0]);
+                    if (leadingHorse.distance >= raceLength) {
+                        raceFinished = true;
+                    }
+                }
+
+                function addHorses(racers) {
+                    return new Promise((resolve, reject) => {
+                        setTimeout(() => {
+                            const horses = Array.from(racers).map((racer, index) => {
+                                const name = racer.dataset.user;
+                                const minSpeed = racer.dataset.min;
+                                const maxSpeed = racer.dataset.max;
+                                const acceleration = racer.dataset.acc;
+                                const endurance = racer.dataset.endu;
+                                return new Horse(name, minSpeed, maxSpeed, acceleration, endurance);
+                            });
+                            resolve({ success: true, horses });
+                        }, 1000);
+                    });
+                }
+
+                function trackStyle() {
+                    if (raceFinished) {
+                        const viewWidth = window.innerWidth;
+                        const viewHalf = viewWidth / 2;
+                        const finishLinePosition = raceLength - viewHalf;
+                        return `translateX(-${finishLinePosition}px)`;
+                    } else if (leadingHorse) {
+                        const viewWidth = window.innerWidth;
+                        const viewHalf = viewWidth / 2;
+                        const horseCenter = leadingHorse.distance + 50;
+                        const scrollPosition = horseCenter - viewHalf;
+                        const interpolatedPosition = lastTrackPosition + (scrollPosition - lastTrackPosition) * 0.1;
+                        lastTrackPosition = interpolatedPosition;
+                        return `translateX(-${interpolatedPosition}px)`;
+                    }
+                    return '';
+                }
+
+                function sortHorses(horses) {
+                    return horses.sort((a, b) => a.time - b.time);
+                }
+
+                function showResults() {
+                    const resultModal = document.getElementById("results");
+                    const sortedHorsesList = sortHorses(horses);
+                    const listingHorse = sortedHorsesList.map((horse, index) => {
+                        return '<li><span class="font-semibold text-gray-900 dark:text-white">' + horse.name + ': ' + (horse.time).toFixed(2) + ' seconds</span></li>';
+                    });
+
+                    resultModal.innerHTML =
+                        '<div class="modal-content">' +
+                        '<h3 class="text-xl mb-8">Congratulations ' + sortedHorsesList[0].name + ' !!!</h3>' +
+                        '<ol class="max-w-md space-y-1 text-gray-500 list-decimal list-inside dark:text-gray-400">' +
+                        listingHorse.join('') +
+                        '</ol>' +
+                        '<a class="mt-8 bg-green-500 p-4 hover:bg-green-300" href="'+lobbyurl+'">Back to Lobby</a>' +
+                        '</div>';
+                    resultModal.style.display = 'block';
+                }
+
+                class Horse {
+                    constructor(name, minSpeed, maxSpeed, acceleration, endurance) {
+                        this.name = name;
+                        this.minSpeed = minSpeed;
+                        this.maxSpeed = maxSpeed;
+                        this.acceleration = acceleration;
+                        this.endurance = endurance;
+                        this.currentSpeed = minSpeed;
+                        this.time = 0;
+                        this.distance = 0;
+                        this.finished = false;
+                    }
+
+                    updateSpeed() {
+                        if (this.finished) {
+                            this.currentSpeed = 0; // Si le cheval a terminé, sa vitesse est 0
+                        } else if (this.time < this.acceleration) {
+                            this.currentSpeed = this.minSpeed + (this.maxSpeed - this.minSpeed) * (this.time / this.acceleration);
+                        } else if (this.time < this.acceleration + this.endurance) {
+                            this.currentSpeed = this.maxSpeed;
+                        } else {
+                            const decelerationTime = this.time - (this.acceleration + this.endurance);
+                            this.currentSpeed = this.maxSpeed - (this.maxSpeed - this.minSpeed) * (decelerationTime / this.endurance);
+                            // on s'assure que la vitesse ne descend pas en dessous de minSpeed
+                            if (this.currentSpeed < this.minSpeed) {
+                                this.currentSpeed = this.minSpeed;
+                            }
+                        }
+                    }
+
+                   move(raceLength) {
+                        this.updateSpeed();
+                        this.time += 0.1;
+                        this.distance += this.currentSpeed * 0.1; // Incrémente la distance en fonction de la vitesse
+                        if (this.distance >= raceLength) {
+                            this.finished = true; // Marquer le cheval comme ayant terminé la course
+                            this.distance = raceLength; // S'assurer que le cheval ne dépasse pas la ligne d'arrivée
+                        }
+                        return this.currentSpeed;
+                    }
+                }
+
+                // Démarrer la course
+                fetchHorses();
+            }
+
+            // Appeler la fonction principale pour initialiser la course
+            initRace();
         });
     </script>
 
