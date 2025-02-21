@@ -10,12 +10,6 @@
                     <span>{{horse.getName()}}</span>
                     <img src="assets/images/horses/{{ horse.getHorseSkin() }}.png"  />
                 </div>
-                 <div>
-                    min_speed : {{horse.getMinSpeed()}}<br>
-                    max_speed : {{horse.getMaxSpeed()}}<br>
-                    acceleration : {{horse.getAcceleration()}}<br>
-                    endurance : {{horse.getEndurance()}}
-                </div>
                 {% endfor %}
             </div>
         </div>
@@ -38,12 +32,13 @@
                 let leadingHorse = null;
                 let racers = document.getElementsByClassName("horse");
                 const raceLength = 10000;
-                const trackContainer = document.getElementById('track-container');
-                trackContainer.style.width = raceLength;
+                const trackContainer = document.getElementById('track');
+                trackContainer.style.width = raceLength+960+'px';
                 let horses = [];
                 const countdownElement = document.getElementById('countdown');
                 let lastUpdateTime = 0;
                 let lastTrackPosition = 0;
+                let lastScrollPosition = 0;
 
                 function horseStyle(horse) {
                     let racer = document.querySelector('[data-user="' + horse.name + '"]');
@@ -136,21 +131,24 @@
                 }
 
                 function trackStyle() {
+                    const viewWidth = window.innerWidth;
+                    const viewHalf = viewWidth / 2;
+                    let scrollPosition;
+
                     if (raceFinished) {
-                        const viewWidth = window.innerWidth;
-                        const viewHalf = viewWidth / 2;
                         const finishLinePosition = raceLength - viewHalf;
-                        return `translateX(-${finishLinePosition}px)`;
+                        scrollPosition = finishLinePosition;
                     } else if (leadingHorse) {
-                        const viewWidth = window.innerWidth;
-                        const viewHalf = viewWidth / 2;
-                        const horseCenter = leadingHorse.distance + 50;
-                        const scrollPosition = horseCenter - viewHalf;
-                        const interpolatedPosition = lastTrackPosition + (scrollPosition - lastTrackPosition) * 0.1;
-                        lastTrackPosition = interpolatedPosition;
-                        return `translateX(-${interpolatedPosition}px)`;
+                        const horseCenter = leadingHorse.distance - 50;
+                        scrollPosition = horseCenter - viewHalf;
+                    } else {
+                        scrollPosition = 0;
                     }
-                    return '';
+
+                    // Interpolation douce pour éviter les sauts brusques
+                    const interpolatedPosition = lastScrollPosition + (scrollPosition - lastScrollPosition) * 0.1;
+                    lastScrollPosition = interpolatedPosition;
+                    return `translateX(-${interpolatedPosition}px)`;
                 }
 
                 function sortHorses(horses) {
