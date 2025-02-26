@@ -26,39 +26,48 @@ final class RaceController extends AbstractController
     {
         $horseList = [];
         $racers = json_decode($request->get('racers'));
-        foreach($racers as $racer){
-            $horse = New Horse();
-            $horse->setName($racer);
-            $horse->setMinSpeed(rand(30,50));
-            $horse->setMaxSpeed(rand(50,90));
-            $horse->setEndurance(rand(40,80));
-            $horse->setAcceleration(rand(40,80));
-            $horse->setHorseSkin(rand(1,4));
-            $horseList[] = $horse;
-        }
 
-        $session = $request->getSession();
-        $twitch_client_id = $this->getParameter('client_id');
-        $twitch_client_secret = $this->getParameter('client_secret');
-        
-        $helixGuzzleClient = new \TwitchApi\HelixGuzzleClient($twitch_client_id);
-        $twitchApi = new \TwitchApi\TwitchApi($helixGuzzleClient, $twitch_client_id, $twitch_client_secret);
-        
-        if ($session->get('access_token') === null) {
-            return $this->redirectToRoute('home');
-
+        if(is_null($racers)){
+            $this->addFlash(
+                'error',
+                'Yous must have one racer !'
+            );
+            return $this->redirectToRoute('lobby');
         } else {
-            $twitch_access_token = $session->get('access_token');
-            $user = $this->twitchService->getTwitchUser($twitch_access_token, $twitchApi);
-
+            foreach($racers as $racer){
+                $horse = New Horse();
+                $horse->setName($racer);
+                $horse->setMinSpeed(rand(30,50));
+                $horse->setMaxSpeed(rand(50,90));
+                $horse->setEndurance(rand(40,80));
+                $horse->setAcceleration(rand(40,80));
+                $horse->setHorseSkin(rand(1,4));
+                $horseList[] = $horse;
+            }
+    
+            $session = $request->getSession();
+            $twitch_client_id = $this->getParameter('client_id');
+            $twitch_client_secret = $this->getParameter('client_secret');
+            
+            $helixGuzzleClient = new \TwitchApi\HelixGuzzleClient($twitch_client_id);
+            $twitchApi = new \TwitchApi\TwitchApi($helixGuzzleClient, $twitch_client_id, $twitch_client_secret);
+            
+            if ($session->get('access_token') === null) {
+                return $this->redirectToRoute('home');
+    
+            } else {
+                $twitch_access_token = $session->get('access_token');
+                $user = $this->twitchService->getTwitchUser($twitch_access_token, $twitchApi);
+    
+            }
+    
+            return $this->render('game/race.html.twig', [
+                'user' => $user,
+                'horses' => $horseList
+            ]);
         }
 
-        return $this->render('game/race.html.twig', [
-            'user' => $user,
-            'horses' => $horseList
-        ]);
-     
-       
+    
     }
 
    

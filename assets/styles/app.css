@@ -76,35 +76,35 @@ body {
 }
 
 .horse:nth-child(1) {
-    top: 240px;
+    top: 180px;
 }
 
 .horse:nth-child(2) {
-    top: 340px;
+    top: 280px;
 }
 
 .horse:nth-child(3) {
-    top: 440px;
+    top: 380px;
 }
 
 .horse:nth-child(4) {
-    top: 540px;
+    top: 480px;
 }
 
 .horse:nth-child(5) {
-    top: 640px;
+    top: 580px;
 }
 
 .horse:nth-child(6) {
-    top: 740px;
+    top: 680px;
 }
 
 .horse:nth-child(7) {
-    top: 840px;
+    top: 780px;
 }
 
 .horse:nth-child(8) {
-    top: 940px;
+    top: 880px;
 }
 
 .horse span {
